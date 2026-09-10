@@ -1,0 +1,6 @@
+[submodule "externals/qpcpp"]
+	path = externals/sst
+	url = https://github.com/QuantumLeaps/Super-Simple-Tasker.git
+[submodule "externals/cpputest-for-sst"]
+	path = externals/cpputest-for-sst
+	url = https://github.com/covemountainsoftware/cpputest-for-sst.git
