@@ -1,6 +1,6 @@
 # CppUTest for the SST (Super Simple Tasker) Examples Test Project
 
-Build and Test status: TODO
+Build and Test status:  ![Build and Tests](https://github.com/covemountainsoftware/cpputest-for-sst-examples/actions/workflows/cmake.yml/badge.svg)
 
 Copyright Matthew Eshleman
 
