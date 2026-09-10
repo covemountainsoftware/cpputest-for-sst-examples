@@ -23,12 +23,28 @@ namespace cms::HwLockCtrl {
 // 10 second polling rate
 static constexpr uint32_t TICKS_PER_POLL = bsp::TICKS_PER_SECOND * 10;
 
-Service::Service() :
-    SstFlatStateMachineTask()
-    //, m_history(nullptr)
-    ,
-    m_poll(POLL_COMM_STATUS, this)
+Service::Service()
+    : SstFlatStateMachineTask()
+    , m_poll(POLL_COMM_STATUS, this)
+    , m_lockState(LockState::UNKNOWN)
 {
+}
+
+Service::LockState Service::GetLockState() const
+{
+    return m_lockState;
+}
+
+void Service::UnlockAsync()
+{
+    static constexpr SST::Evt ev {HW_LOCK_CTRL_SERVICE_REQUEST_UNLOCKED_SIG};
+    post(&ev);
+}
+
+void Service::LockAsync()
+{
+    static constexpr SST::Evt ev {HW_LOCK_CTRL_SERVICE_REQUEST_LOCKED_SIG};
+    post(&ev);
 }
 
 FlatStateMachine<SST::Evt>::StateRtn
@@ -37,8 +53,8 @@ Service::InitialPseudoState(const SST::Evt*)
     HwLockCtrlInit();
     return TransitionTo(&Service::StateOfLocked);
 }
-FlatStateMachine<SST::Evt>::StateRtn
-Service::StateOfLocked(const SST::Evt* e)
+
+FlatStateMachine<SST::Evt>::StateRtn Service::StateOfLocked(const SST::Evt* e)
 {
     switch (e->sig) {
         case SM_ENTER:
@@ -53,6 +69,7 @@ Service::StateOfLocked(const SST::Evt* e)
             return Handled();
     }
 }
+
 FlatStateMachine<SST::Evt>::StateRtn Service::StateOfUnlocked(const SST::Evt* e)
 {
     switch (e->sig) {
@@ -68,10 +85,10 @@ FlatStateMachine<SST::Evt>::StateRtn Service::StateOfUnlocked(const SST::Evt* e)
             return Handled();
     }
 }
-FlatStateMachine<SST::Evt>::StateRtn
-Service::StateOfSelfTest(const SST::Evt* e)
+
+FlatStateMachine<SST::Evt>::StateRtn Service::StateOfSelfTest(const SST::Evt* e)
 {
-    (void)e; //todo
+    (void)e;   // todo
     return Handled();
 }
 
@@ -92,15 +109,16 @@ void Service::performSelfTest()
     //
     //  https://covemountainsoftware.com/2020/03/08/uml-statechart-handling-errors-when-entering-a-state/
     //
-    //TODO static constexpr SST::Evt event {REQUEST_GOTO_HISTORY};
+    // TODO static constexpr SST::Evt event {REQUEST_GOTO_HISTORY};
 
-    //TODO post(&event);
+    // TODO post(&event);
 }
 
-void Service::notifyChangedState(Service::LockState state)
+void Service::notifyChangedState(const LockState state)
 {
-    (void)state;
-    //TODO
+    m_lockState = state;
+
+    // TODO
     /*
     static const QP::QEvt lockedEvent =
       QP::QEvt(HW_LOCK_CTRL_SERVICE_IS_LOCKED_SIG);
@@ -123,7 +141,7 @@ void Service::notifyChangedState(Service::LockState state)
     */
 }
 
-void Service::notifySelfTestResult(SelfTestResult result)
+void Service::notifySelfTestResult(const SelfTestResult result)
 {
     (void)result;
     /* TODO

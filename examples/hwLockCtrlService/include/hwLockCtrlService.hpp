@@ -18,6 +18,7 @@
 #include "sst.hpp"
 #include "cms_sst_flat_state_machine_task.hpp"
 #include "hwLockCtrlSelfTestResultEnum.hpp"
+#include <atomic>
 
 namespace cms::HwLockCtrl {
 
@@ -46,6 +47,20 @@ public:
     Service(Service&&)                 = delete;
     Service& operator=(Service&&)      = delete;
 
+    LockState GetLockState() const;
+
+    /**
+     * Send an event to this active object to
+     * attempt to unlock.
+     */
+    void UnlockAsync();
+
+    /**
+     * Send an event to this active object to
+     * attempt to lock.
+     */
+    void LockAsync();
+
 protected:
     enum InternalSignals {
         REQUEST_GOTO_HISTORY = MAX_DIRECT_SIG,
@@ -54,17 +69,18 @@ protected:
 
     StateRtn InitialPseudoState(const SST::Evt* event) override;
 
-    StateRtn StateOfLocked(const SST::Evt* event);
-    StateRtn StateOfUnlocked(const SST::Evt* event);
-    StateRtn StateOfSelfTest(const SST::Evt* event);
+    StateRtn StateOfLocked(const SST::Evt* e);
+    StateRtn StateOfUnlocked(const SST::Evt* e);
+    StateRtn StateOfSelfTest(const SST::Evt* e);
 
 private:
     static void notifySelfTestResult(SelfTestResult result);
     void notifyChangedState(LockState state);
     void performSelfTest();
 
-    //TODO QP::QStateHandler m_history;
+    // TODO QP::QStateHandler m_history;
     SST::TimeEvt m_poll;
+    std::atomic<LockState> m_lockState;
 };
 }   // namespace cms::HwLockCtrl
 

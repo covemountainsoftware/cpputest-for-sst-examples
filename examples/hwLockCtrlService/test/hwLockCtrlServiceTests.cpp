@@ -1,5 +1,5 @@
 /// @brief  Tests for the HwLockCtrl::Service, demonstrating various unit
-///         testing capabilities of the 'fake' cms::test::qf_ctrl environment,
+///         testing capabilities of the cms::test::sst_ctrl environment,
 ///         using cpputest.
 /// @ingroup
 /// @cond
@@ -33,7 +33,7 @@ static std::array<SST::Evt const*, 10> testQueueStorage;
 /**
  * @brief These tests demonstrate the following key points:
  *         1) Does NOT test any thread that may be associated with the active
- *            object, rather, the associated cms:test::qf_ctrl environment is
+ *            object, rather, the associated cms::test::sst_ctrl environment is
  *            thread free, and "faked" to required the test to drive
  *            processing time.
  *         2) Tests the internal behavior of the active object without
@@ -41,24 +41,19 @@ static std::array<SST::Evt const*, 10> testQueueStorage;
  *            by observing the behavior and associated output/results.
  *         3) Follow software engineering best practices, such
  *            as adhering to the DRY principle.
- *         4) Shows how to test if an event was published to the QP framework,
- *            using a published event recorder available from
- *            cms::test::qf_ctrl.
- *         5) Shows how to test if a published event has a custom type and
- *            payload.
- *         6) Shows how to test behavior driven by QActive timers (i.e. how
+ *         4) Shows how to test behavior driven by SST timers (i.e. how
  *            to test the forward movement of time and expected behavior being
  *            tested.)
  */
 TEST_GROUP(HwLockCtrlServiceTests)
 {
-    std::unique_ptr<HwLockCtrl::Service> mUnderTest  = nullptr;
+    std::unique_ptr<HwLockCtrl::Service> underTest = nullptr;
 
     void setup() final
     {
         using namespace cms::test;
         sst_ctrl::Setup(bsp::TICKS_PER_SECOND);
-        mUnderTest = std::make_unique<HwLockCtrl::Service>();
+        underTest = std::make_unique<HwLockCtrl::Service>();
     }
 
     void teardown() final
@@ -75,9 +70,9 @@ TEST_GROUP(HwLockCtrlServiceTests)
         mock(HW_LOCK_CTRL_MOCK).expectOneCall("Lock");
 
         // start the active object under test.
-        mUnderTest->start(sst_ctrl::UNIT_UNDER_TEST_PRIORITY,
-                          testQueueStorage.data(), testQueueStorage.size(),
-                          nullptr);
+        underTest->start(sst_ctrl::UNIT_UNDER_TEST_PRIORITY,
+                         testQueueStorage.data(), testQueueStorage.size(),
+                         nullptr);
 
         // give the system some processing time to handle
         // any internal or queued events
@@ -86,8 +81,7 @@ TEST_GROUP(HwLockCtrlServiceTests)
         // check that the driver/mock interactions were all as expected.
         mock().checkExpectations();
 
-        // check that the event recorder captured the expected published event
-        //TODO CHECK_TRUE(          mRecorder->isSignalRecorded(HW_LOCK_CTRL_SERVICE_IS_LOCKED_SIG));
+        CHECK_TRUE(HwLockCtrl::Service::LockState::LOCKED == underTest->GetLockState());
     }
 
     void startServiceToUnlocked()
@@ -99,12 +93,13 @@ TEST_GROUP(HwLockCtrlServiceTests)
     void testUnlock()
     {
         mock(HW_LOCK_CTRL_MOCK).expectOneCall("Unlock");
-        //TODO qf_ctrl::PublishAndProcess(HW_LOCK_CTRL_SERVICE_REQUEST_UNLOCKED_SIG,                                   mRecorder);
+        underTest->UnlockAsync();
+        giveProcessingTime();
         mock().checkExpectations();
-        //TODO CHECK_TRUE(          mRecorder->isSignalRecorded(HW_LOCK_CTRL_SERVICE_IS_UNLOCKED_SIG));
+        CHECK_TRUE(HwLockCtrl::Service::LockState::UNLOCKED == underTest->GetLockState());
     }
 
-    void giveProcessingTime()
+    static void giveProcessingTime()
     {
         sst_ctrl::ProcessEvents();
     }
@@ -114,6 +109,7 @@ TEST(HwLockCtrlServiceTests, given_init_when_created_then_does_not_crash)
 {
     // setup() is automatically called by cpputest, which creates our unit under
     // test fully representing this trivial starting test.
+    CHECK_TRUE(HwLockCtrl::Service::LockState::UNKNOWN == underTest->GetLockState());
 }
 
 TEST(HwLockCtrlServiceTests,
@@ -132,19 +128,15 @@ TEST(HwLockCtrlServiceTests,
 TEST(HwLockCtrlServiceTests,
      given_locked_when_another_lock_request_then_service_is_silent)
 {
-    //TODO
-    return;
     startServiceToLocked();
-    //TODO qf_ctrl::PublishAndProcess(HW_LOCK_CTRL_SERVICE_REQUEST_LOCKED_SIG,                               mRecorder);
-    //TODO CHECK_TRUE(mRecorder->isEmpty());
+    underTest->LockAsync();
+    giveProcessingTime();
     mock().checkExpectations();
 }
 
 TEST(HwLockCtrlServiceTests,
      given_locked_when_unlock_request_then_service_unlocks_the_driver)
 {
-    //TODO
-    return;
     startServiceToLocked();
     testUnlock();
 }
@@ -152,30 +144,27 @@ TEST(HwLockCtrlServiceTests,
 TEST(HwLockCtrlServiceTests,
      given_unlocked_when_another_unlock_request_then_service_is_silent)
 {
-    //TODO
-    return;
     startServiceToUnlocked();
-    //TODO qf_ctrl::PublishAndProcess(HW_LOCK_CTRL_SERVICE_REQUEST_UNLOCKED_SIG,                               mRecorder);
-    //TODO CHECK_TRUE(mRecorder->isEmpty());
+    underTest->UnlockAsync();
+    giveProcessingTime();
     mock().checkExpectations();
 }
 
 TEST(HwLockCtrlServiceTests,
      given_unlocked_a_lock_request_will_return_to_locked)
 {
-    //TODO
-    return;
     startServiceToUnlocked();
     mock(HW_LOCK_CTRL_MOCK).expectOneCall("Lock");
-    //TODO qf_ctrl::PublishAndProcess(HW_LOCK_CTRL_SERVICE_REQUEST_LOCKED_SIG,                               mRecorder);
-    //TODO CHECK_TRUE(mRecorder->isSignalRecorded(HW_LOCK_CTRL_SERVICE_IS_LOCKED_SIG));
+    underTest->LockAsync();
+    giveProcessingTime();
     mock().checkExpectations();
 }
 
-TEST(HwLockCtrlServiceTests,
-     given_locked_when_selftest_requested_then_service_performs_selftest_publishes_results_and_returns_to_locked)
+TEST(
+  HwLockCtrlServiceTests,
+  given_locked_when_selftest_requested_then_service_performs_selftest_publishes_results_and_returns_to_locked)
 {
-    //TODO
+    // TODO
     return;
     startServiceToLocked();
 
@@ -184,19 +173,24 @@ TEST(HwLockCtrlServiceTests,
       .expectOneCall("SelfTest")
       .withOutputParameterReturning("outResult", &passed, sizeof(passed));
     mock(HW_LOCK_CTRL_MOCK).expectOneCall("Lock");
-    //TODO qf_ctrl::PublishAndProcess(HW_LOCK_CTRL_SERVICE_REQUEST_SELF_TEST_SIG,                               mRecorder);
+    // TODO
+    // qf_ctrl::PublishAndProcess(HW_LOCK_CTRL_SERVICE_REQUEST_SELF_TEST_SIG,
+    // mRecorder);
     mock().checkExpectations();
-    //TODO auto event = mRecorder->getRecordedEvent<HwLockCtrl::SelfTestEvent>();
-    //TODO CHECK_TRUE(event != nullptr);
-    //TODO CHECK_EQUAL(HW_LOCK_CTRL_SERVICE_SELF_TEST_RESULTS_SIG, event->sig);
-    //TODO CHECK_TRUE(HwLockCtrl::SelfTestResult::PASS == event->m_result);
-    //TODO CHECK_TRUE(mRecorder->isSignalRecorded(HW_LOCK_CTRL_SERVICE_IS_LOCKED_SIG));
+    // TODO auto event =
+    // mRecorder->getRecordedEvent<HwLockCtrl::SelfTestEvent>();
+    // TODO CHECK_TRUE(event != nullptr);
+    // TODO CHECK_EQUAL(HW_LOCK_CTRL_SERVICE_SELF_TEST_RESULTS_SIG, event->sig);
+    // TODO CHECK_TRUE(HwLockCtrl::SelfTestResult::PASS == event->m_result);
+    // TODO
+    // CHECK_TRUE(mRecorder->isSignalRecorded(HW_LOCK_CTRL_SERVICE_IS_LOCKED_SIG));
 }
 
-TEST(HwLockCtrlServiceTests,
-     given_unlocked_when_selftest_request_then_service_performs_selftest_emits_results_and_returns_to_unlocked)
+TEST(
+  HwLockCtrlServiceTests,
+  given_unlocked_when_selftest_request_then_service_performs_selftest_emits_results_and_returns_to_unlocked)
 {
-    //TODO
+    // TODO
     return;
     startServiceToUnlocked();
 
@@ -205,19 +199,24 @@ TEST(HwLockCtrlServiceTests,
       .expectOneCall("SelfTest")
       .withOutputParameterReturning("outResult", &passed, sizeof(passed));
     mock(HW_LOCK_CTRL_MOCK).expectOneCall("Unlock");
-    //TODO qf_ctrl::PublishAndProcess(HW_LOCK_CTRL_SERVICE_REQUEST_SELF_TEST_SIG,                               mRecorder);
+    // TODO
+    // qf_ctrl::PublishAndProcess(HW_LOCK_CTRL_SERVICE_REQUEST_SELF_TEST_SIG,
+    // mRecorder);
     mock().checkExpectations();
-    //TODO auto event = mRecorder->getRecordedEvent<HwLockCtrl::SelfTestEvent>();
-    //TODO CHECK_TRUE(event != nullptr);
-    //TODO CHECK_EQUAL(HW_LOCK_CTRL_SERVICE_SELF_TEST_RESULTS_SIG, event->sig);
-    //TODO CHECK_TRUE(HwLockCtrl::SelfTestResult::PASS == event->m_result);
-    //TODO CHECK_TRUE(      mRecorder->isSignalRecorded(HW_LOCK_CTRL_SERVICE_IS_UNLOCKED_SIG));
+    // TODO auto event =
+    // mRecorder->getRecordedEvent<HwLockCtrl::SelfTestEvent>();
+    // TODO CHECK_TRUE(event != nullptr);
+    // TODO CHECK_EQUAL(HW_LOCK_CTRL_SERVICE_SELF_TEST_RESULTS_SIG, event->sig);
+    // TODO CHECK_TRUE(HwLockCtrl::SelfTestResult::PASS == event->m_result);
+    // TODO CHECK_TRUE(
+    // mRecorder->isSignalRecorded(HW_LOCK_CTRL_SERVICE_IS_UNLOCKED_SIG));
 }
 
-TEST(HwLockCtrlServiceTests,
-     given_locked_when_selftest_request_which_fails_then_service_still_returns_to_locked)
+TEST(
+  HwLockCtrlServiceTests,
+  given_locked_when_selftest_request_which_fails_then_service_still_returns_to_locked)
 {
-    //TODO
+    // TODO
     return;
     startServiceToLocked();
 
@@ -226,19 +225,24 @@ TEST(HwLockCtrlServiceTests,
       .expectOneCall("SelfTest")
       .withOutputParameterReturning("outResult", &passed, sizeof(passed));
     mock(HW_LOCK_CTRL_MOCK).expectOneCall("Lock");
-    //TODO qf_ctrl::PublishAndProcess(HW_LOCK_CTRL_SERVICE_REQUEST_SELF_TEST_SIG,                               mRecorder);
+    // TODO
+    // qf_ctrl::PublishAndProcess(HW_LOCK_CTRL_SERVICE_REQUEST_SELF_TEST_SIG,
+    // mRecorder);
     mock().checkExpectations();
-    //TODO auto event = mRecorder->getRecordedEvent<HwLockCtrl::SelfTestEvent>();
-    //TODO CHECK_TRUE(event != nullptr);
-    //TODO CHECK_EQUAL(HW_LOCK_CTRL_SERVICE_SELF_TEST_RESULTS_SIG, event->sig);
-    //TODO CHECK_TRUE(HwLockCtrl::SelfTestResult::FAIL == event->m_result);
-    //TODO CHECK_TRUE(mRecorder->isSignalRecorded(HW_LOCK_CTRL_SERVICE_IS_LOCKED_SIG));
+    // TODO auto event =
+    // mRecorder->getRecordedEvent<HwLockCtrl::SelfTestEvent>();
+    // TODO CHECK_TRUE(event != nullptr);
+    // TODO CHECK_EQUAL(HW_LOCK_CTRL_SERVICE_SELF_TEST_RESULTS_SIG, event->sig);
+    // TODO CHECK_TRUE(HwLockCtrl::SelfTestResult::FAIL == event->m_result);
+    // TODO
+    // CHECK_TRUE(mRecorder->isSignalRecorded(HW_LOCK_CTRL_SERVICE_IS_LOCKED_SIG));
 }
 
-TEST(HwLockCtrlServiceTests,
-     given_unlocked_when_selftest_request_which_fails_then_service_still_returns_to_unlocked)
+TEST(
+  HwLockCtrlServiceTests,
+  given_unlocked_when_selftest_request_which_fails_then_service_still_returns_to_unlocked)
 {
-    //TODO
+    // TODO
     return;
     startServiceToUnlocked();
 
@@ -247,19 +251,23 @@ TEST(HwLockCtrlServiceTests,
       .expectOneCall("SelfTest")
       .withOutputParameterReturning("outResult", &passed, sizeof(passed));
     mock(HW_LOCK_CTRL_MOCK).expectOneCall("Unlock");
-    //TODO qf_ctrl::PublishAndProcess(HW_LOCK_CTRL_SERVICE_REQUEST_SELF_TEST_SIG,                               mRecorder);
+    // TODO
+    // qf_ctrl::PublishAndProcess(HW_LOCK_CTRL_SERVICE_REQUEST_SELF_TEST_SIG,
+    // mRecorder);
     mock().checkExpectations();
-    //TODO auto event = mRecorder->getRecordedEvent<HwLockCtrl::SelfTestEvent>();
-    //TODO CHECK_TRUE(event != nullptr);
-    //TODO CHECK_EQUAL(HW_LOCK_CTRL_SERVICE_SELF_TEST_RESULTS_SIG, event->sig);
-    //TODO CHECK_TRUE(HwLockCtrl::SelfTestResult::FAIL == event->m_result);
-    //TODO CHECK_TRUE(      mRecorder->isSignalRecorded(HW_LOCK_CTRL_SERVICE_IS_UNLOCKED_SIG));
+    // TODO auto event =
+    // mRecorder->getRecordedEvent<HwLockCtrl::SelfTestEvent>();
+    // TODO CHECK_TRUE(event != nullptr);
+    // TODO CHECK_EQUAL(HW_LOCK_CTRL_SERVICE_SELF_TEST_RESULTS_SIG, event->sig);
+    // TODO CHECK_TRUE(HwLockCtrl::SelfTestResult::FAIL == event->m_result);
+    // TODO CHECK_TRUE(
+    // mRecorder->isSignalRecorded(HW_LOCK_CTRL_SERVICE_IS_UNLOCKED_SIG));
 }
 
 TEST(HwLockCtrlServiceTests,
      given_locked_when_10secs_passes_then_service_polls_lock_comm_status)
 {
-    //TODO
+    // TODO
     return;
     using namespace std::chrono_literals;
 
@@ -272,7 +280,7 @@ TEST(HwLockCtrlServiceTests,
 TEST(HwLockCtrlServiceTests,
      given_locked_when_9900ms_passes_then_service_has_not_polled_yet)
 {
-    //TODO
+    // TODO
     return;
     using namespace std::chrono_literals;
 
@@ -290,7 +298,7 @@ TEST(HwLockCtrlServiceTests,
 TEST(HwLockCtrlServiceTests,
      given_locked_when_60s_passes_then_service_has_polled_six_times)
 {
-    //TODO
+    // TODO
     return;
     using namespace std::chrono_literals;
 
@@ -306,50 +314,53 @@ TEST(HwLockCtrlServiceTests,
 TEST(HwLockCtrlServiceTests,
      given_test_assert_event_will_assert_and_can_be_tested)
 {
-    //TODO
+    // TODO
     return;
-    //TODO static const QP::QEvt assertCausingEvent  = QP::QEvt(DEMONSTRATE_TEST_OF_QASSERT);
+    // TODO static const QP::QEvt assertCausingEvent  =
+    // QP::QEvt(DEMONSTRATE_TEST_OF_QASSERT);
 
     startServiceToLocked();
 
-    //TODO cms::test::MockExpectQAssert();
-    //TODO mUnderTest->POST(&assertCausingEvent, 0);
+    // TODO cms::test::MockExpectQAssert();
+    // TODO mUnderTest->POST(&assertCausingEvent, 0);
     giveProcessingTime();
     mock().checkExpectations();
 }
 
 TEST(HwLockCtrlServiceTests, the_service_responds_to_a_ping_with_a_pong)
 {
-    //TODO
+    // TODO
     return;
     startServiceToLocked();
 
     //+500 just to ensure outside any internal private signals
-    //TODO static constexpr enum_t RESPONSE_SIG = PubSub::MAX_PUB_SIG + 500;
+    // TODO static constexpr enum_t RESPONSE_SIG = PubSub::MAX_PUB_SIG + 500;
 
     // this test demonstrates testing an AO that must respond directly
     // to an event with a POST directly to an external requesting AO.
 
-    //TODO Pong pongEvent(0);
+    // TODO Pong pongEvent(0);
 
-    //TODO auto dummy = std::unique_ptr<cms::test::DefaultDummyActiveObject>(      new cms::test::DefaultDummyActiveObject());
-    //TODO dummy->SetPostedEventHandler([&pongEvent](const QP::QEvt* event) {
-        //TODO auto p             = static_cast<const Pong*>(event);
-        //TODO pongEvent.sig      = p->sig;
-        //TODO pongEvent.m_source = p->m_source;
-    //TODO });
+    // TODO auto dummy = std::unique_ptr<cms::test::DefaultDummyActiveObject>(
+    // new cms::test::DefaultDummyActiveObject());
+    // TODO dummy->SetPostedEventHandler([&pongEvent](const QP::QEvt* event) {
+    // TODO auto p             = static_cast<const Pong*>(event);
+    // TODO pongEvent.sig      = p->sig;
+    // TODO pongEvent.m_source = p->m_source;
+    // TODO });
 
     // Reminder: QF requires that each AO be at a unique priority level
     // hence the '- 1' below.
-    //TODO dummy->dummyStart(qf_ctrl::UNIT_UNDER_TEST_PRIORITY - 1);
+    // TODO dummy->dummyStart(qf_ctrl::UNIT_UNDER_TEST_PRIORITY - 1);
 
     // Send the Ping to our AO under test and give it
     // some processing time.
-    //TODO Ping::sendTo<HwLockCtrl::Service::DirectSignals::PING>(      mUnderTest, RESPONSE_SIG, dummy.get());
-    //TODO qf_ctrl::ProcessEvents();
+    // TODO Ping::sendTo<HwLockCtrl::Service::DirectSignals::PING>( mUnderTest,
+    // RESPONSE_SIG, dummy.get());
+    // TODO qf_ctrl::ProcessEvents();
 
     // confirm that our dummy received a Pong with expected
     // data.
-    //TODO CHECK_EQUAL(RESPONSE_SIG, pongEvent.sig);
-    //TODO CHECK_EQUAL(mUnderTest, pongEvent.m_source);
+    // TODO CHECK_EQUAL(RESPONSE_SIG, pongEvent.sig);
+    // TODO CHECK_EQUAL(mUnderTest, pongEvent.m_source);
 }
