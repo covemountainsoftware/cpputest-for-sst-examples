@@ -12,8 +12,8 @@
 ///***************************************************************************
 /// @endcond
 
-#ifndef DEMO_HWLOCKCTRLSERVICE_HPP
-#define DEMO_HWLOCKCTRLSERVICE_HPP
+#ifndef DEMO_SST_HW_LOCK_CTRL_SERVICE_HPP
+#define DEMO_SST_HW_LOCK_CTRL_SERVICE_HPP
 
 #include "sst.hpp"
 #include "cms_sst_flat_state_machine_task.hpp"
@@ -26,7 +26,7 @@ namespace cms::HwLockCtrl {
  * @brief the HwLockCtrl::Service demonstration active object provides for
  *        higher level hardware lock control behavior.
  *        For example, this service will automatically return the hardware lock
- * to its last state after completing a self test request.
+ *        to its last state after completing a self test request.
  */
 class Service : public SstFlatStateMachineTask {
 public:
@@ -47,7 +47,7 @@ public:
     Service(Service&&)                 = delete;
     Service& operator=(Service&&)      = delete;
 
-    LockState GetLockState() const;
+    [[nodiscard]] LockState GetLockState() const;
 
     /**
      * Send an event to this active object to
@@ -84,4 +84,4 @@ private:
 };
 }   // namespace cms::HwLockCtrl
 
-#endif   // DEMO_HWLOCKCTRLSERVICE_HPP
+#endif   // DEMO_SST_HW_LOCK_CTRL_SERVICE_HPP
