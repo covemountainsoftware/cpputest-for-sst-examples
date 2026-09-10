@@ -267,8 +267,6 @@ TEST(
 TEST(HwLockCtrlServiceTests,
      given_locked_when_10secs_passes_then_service_polls_lock_comm_status)
 {
-    // TODO
-    return;
     using namespace std::chrono_literals;
 
     startServiceToLocked();
@@ -280,8 +278,6 @@ TEST(HwLockCtrlServiceTests,
 TEST(HwLockCtrlServiceTests,
      given_locked_when_9900ms_passes_then_service_has_not_polled_yet)
 {
-    // TODO
-    return;
     using namespace std::chrono_literals;
 
     startServiceToLocked();
@@ -298,8 +294,6 @@ TEST(HwLockCtrlServiceTests,
 TEST(HwLockCtrlServiceTests,
      given_locked_when_60s_passes_then_service_has_polled_six_times)
 {
-    // TODO
-    return;
     using namespace std::chrono_literals;
 
     // Demo multiple events over time, and confirm that the
@@ -325,42 +319,4 @@ TEST(HwLockCtrlServiceTests,
     // TODO mUnderTest->POST(&assertCausingEvent, 0);
     giveProcessingTime();
     mock().checkExpectations();
-}
-
-TEST(HwLockCtrlServiceTests, the_service_responds_to_a_ping_with_a_pong)
-{
-    // TODO
-    return;
-    startServiceToLocked();
-
-    //+500 just to ensure outside any internal private signals
-    // TODO static constexpr enum_t RESPONSE_SIG = PubSub::MAX_PUB_SIG + 500;
-
-    // this test demonstrates testing an AO that must respond directly
-    // to an event with a POST directly to an external requesting AO.
-
-    // TODO Pong pongEvent(0);
-
-    // TODO auto dummy = std::unique_ptr<cms::test::DefaultDummyActiveObject>(
-    // new cms::test::DefaultDummyActiveObject());
-    // TODO dummy->SetPostedEventHandler([&pongEvent](const QP::QEvt* event) {
-    // TODO auto p             = static_cast<const Pong*>(event);
-    // TODO pongEvent.sig      = p->sig;
-    // TODO pongEvent.m_source = p->m_source;
-    // TODO });
-
-    // Reminder: QF requires that each AO be at a unique priority level
-    // hence the '- 1' below.
-    // TODO dummy->dummyStart(qf_ctrl::UNIT_UNDER_TEST_PRIORITY - 1);
-
-    // Send the Ping to our AO under test and give it
-    // some processing time.
-    // TODO Ping::sendTo<HwLockCtrl::Service::DirectSignals::PING>( mUnderTest,
-    // RESPONSE_SIG, dummy.get());
-    // TODO qf_ctrl::ProcessEvents();
-
-    // confirm that our dummy received a Pong with expected
-    // data.
-    // TODO CHECK_EQUAL(RESPONSE_SIG, pongEvent.sig);
-    // TODO CHECK_EQUAL(mUnderTest, pongEvent.m_source);
 }

@@ -51,6 +51,7 @@ FlatStateMachine<SST::Evt>::StateRtn
 Service::InitialPseudoState(const SST::Evt*)
 {
     HwLockCtrlInit();
+    m_poll.arm(TICKS_PER_POLL, TICKS_PER_POLL);
     return TransitionTo(&Service::StateOfLocked);
 }
 
@@ -65,6 +66,11 @@ FlatStateMachine<SST::Evt>::StateRtn Service::StateOfLocked(const SST::Evt* e)
             return Handled();
         case HW_LOCK_CTRL_SERVICE_REQUEST_UNLOCKED_SIG:
             return TransitionTo(&Service::StateOfUnlocked);
+        case POLL_COMM_STATUS:
+            // this is just to demonstrate unit testing of time
+            // based functionality.
+            HwLockCtrlIsCommOk();
+            return Handled();
         default:
             return Handled();
     }
@@ -81,6 +87,11 @@ FlatStateMachine<SST::Evt>::StateRtn Service::StateOfUnlocked(const SST::Evt* e)
             return Handled();
         case HW_LOCK_CTRL_SERVICE_REQUEST_LOCKED_SIG:
             return TransitionTo(&Service::StateOfLocked);
+        case POLL_COMM_STATUS:
+            // this is just to demonstrate unit testing of time
+            // based functionality.
+            HwLockCtrlIsCommOk();
+            return Handled();
         default:
             return Handled();
     }
