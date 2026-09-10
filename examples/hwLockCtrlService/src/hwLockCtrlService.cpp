@@ -58,42 +58,52 @@ Service::InitialPseudoState(const SST::Evt*)
 FlatStateMachine<SST::Evt>::StateRtn Service::StateOfLocked(const SST::Evt* e)
 {
     switch (e->sig) {
-        case SM_ENTER:
+        case SM_ENTER: {
             HwLockCtrlLock();
             notifyChangedState(LockState::LOCKED);
             return Handled();
-        case HW_LOCK_CTRL_SERVICE_REQUEST_LOCKED_SIG:
+        }
+        case HW_LOCK_CTRL_SERVICE_REQUEST_LOCKED_SIG: {
             return Handled();
-        case HW_LOCK_CTRL_SERVICE_REQUEST_UNLOCKED_SIG:
+        }
+        case HW_LOCK_CTRL_SERVICE_REQUEST_UNLOCKED_SIG: {
             return TransitionTo(&Service::StateOfUnlocked);
-        case POLL_COMM_STATUS:
+        }
+        case POLL_COMM_STATUS: {
             // this is just to demonstrate unit testing of time
             // based functionality.
             HwLockCtrlIsCommOk();
             return Handled();
-        default:
+        }
+        default: {
             return Handled();
+        }
     }
 }
 
 FlatStateMachine<SST::Evt>::StateRtn Service::StateOfUnlocked(const SST::Evt* e)
 {
     switch (e->sig) {
-        case SM_ENTER:
+        case SM_ENTER: {
             HwLockCtrlUnlock();
             notifyChangedState(LockState::UNLOCKED);
             return Handled();
-        case HW_LOCK_CTRL_SERVICE_REQUEST_UNLOCKED_SIG:
+        }
+        case HW_LOCK_CTRL_SERVICE_REQUEST_UNLOCKED_SIG: {
             return Handled();
-        case HW_LOCK_CTRL_SERVICE_REQUEST_LOCKED_SIG:
+        }
+        case HW_LOCK_CTRL_SERVICE_REQUEST_LOCKED_SIG: {
             return TransitionTo(&Service::StateOfLocked);
-        case POLL_COMM_STATUS:
+        }
+        case POLL_COMM_STATUS: {
             // this is just to demonstrate unit testing of time
             // based functionality.
             HwLockCtrlIsCommOk();
             return Handled();
-        default:
+        }
+        default: {
             return Handled();
+        }
     }
 }
 
@@ -106,7 +116,7 @@ FlatStateMachine<SST::Evt>::StateRtn Service::StateOfSelfTest(const SST::Evt* e)
 void Service::performSelfTest()
 {
     HwLockCtrlSelfTestResult result;
-    bool ok = HwLockCtrlSelfTest(&result);
+    const bool ok = HwLockCtrlSelfTest(&result);
     if (ok && (result == HW_LOCK_CTRL_SELF_TEST_PASSED)) {
         notifySelfTestResult(SelfTestResult::PASS);
     }
