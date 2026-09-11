@@ -207,78 +207,85 @@ TEST(
     HwLockCtrlServiceTests,
     given_unlocked_when_selftest_request_then_service_performs_selftest_emits_results_and_returns_to_unlocked)
 {
-    // TODO
-    return;
     startServiceToUnlocked();
 
     auto passed = HW_LOCK_CTRL_SELF_TEST_PASSED;
+
+    //the self test call to the driver is first. setup to return passed.
     mock(HW_LOCK_CTRL_MOCK)
         .expectOneCall("SelfTest")
         .withOutputParameterReturning("outResult", &passed, sizeof(passed));
+
+    //then we expect the callback to be hit, showing PASS
+    mock().expectOneCall("TestSelfTestResultCallback")
+          .withUnsignedIntParameter("result",
+                                    static_cast<unsigned int>(
+                                        HwLockCtrl::SelfTestResult::PASS));
+
+    //then we expect the service to return to locked
     mock(HW_LOCK_CTRL_MOCK).expectOneCall("Unlock");
-    // TODO
-    // qf_ctrl::PublishAndProcess(HW_LOCK_CTRL_SERVICE_REQUEST_SELF_TEST_SIG,
-    // mRecorder);
+
+    underTest->DoSelfTestAsync();
+    sst_ctrl::ProcessEvents();
+
     mock().checkExpectations();
-    // TODO auto event =
-    // mRecorder->getRecordedEvent<HwLockCtrl::SelfTestEvent>();
-    // TODO CHECK_TRUE(event != nullptr);
-    // TODO CHECK_EQUAL(HW_LOCK_CTRL_SERVICE_SELF_TEST_RESULTS_SIG, event->sig);
-    // TODO CHECK_TRUE(HwLockCtrl::SelfTestResult::PASS == event->m_result);
-    // TODO CHECK_TRUE(
-    // mRecorder->isSignalRecorded(HW_LOCK_CTRL_SERVICE_IS_UNLOCKED_SIG));
 }
 
 TEST(
     HwLockCtrlServiceTests,
     given_locked_when_selftest_request_which_fails_then_service_still_returns_to_locked)
 {
-    // TODO
-    return;
     startServiceToLocked();
 
     auto passed = HW_LOCK_CTRL_SELF_TEST_FAILED_POWER;
+
+    //the self test call to the driver is first. setup to return passed.
     mock(HW_LOCK_CTRL_MOCK)
         .expectOneCall("SelfTest")
         .withOutputParameterReturning("outResult", &passed, sizeof(passed));
+
+    //then we expect the callback to be hit, showing PASS
+    mock().expectOneCall("TestSelfTestResultCallback")
+          .withUnsignedIntParameter("result",
+                                    static_cast<unsigned int>(
+                                        HwLockCtrl::SelfTestResult::FAIL));
+
+    //then we expect the service to return to locked
     mock(HW_LOCK_CTRL_MOCK).expectOneCall("Lock");
-    // TODO
-    // qf_ctrl::PublishAndProcess(HW_LOCK_CTRL_SERVICE_REQUEST_SELF_TEST_SIG,
-    // mRecorder);
+
+    underTest->DoSelfTestAsync();
+    sst_ctrl::ProcessEvents();
+
     mock().checkExpectations();
-    // TODO auto event =
-    // mRecorder->getRecordedEvent<HwLockCtrl::SelfTestEvent>();
-    // TODO CHECK_TRUE(event != nullptr);
-    // TODO CHECK_EQUAL(HW_LOCK_CTRL_SERVICE_SELF_TEST_RESULTS_SIG, event->sig);
-    // TODO CHECK_TRUE(HwLockCtrl::SelfTestResult::FAIL == event->m_result);
-    // TODO
-    // CHECK_TRUE(mRecorder->isSignalRecorded(HW_LOCK_CTRL_SERVICE_IS_LOCKED_SIG));
 }
 
 TEST(
     HwLockCtrlServiceTests,
     given_unlocked_when_selftest_request_which_fails_then_service_still_returns_to_unlocked)
 {
-    // TODO
-    return;
     startServiceToUnlocked();
 
-    auto passed = HW_LOCK_CTRL_SELF_TEST_FAILED_MOTOR;
+
+    auto passed = HW_LOCK_CTRL_SELF_TEST_FAILED_POWER;
+
+    //the self test call to the driver is first. setup to return passed.
     mock(HW_LOCK_CTRL_MOCK)
-      .expectOneCall("SelfTest")
-      .withOutputParameterReturning("outResult", &passed, sizeof(passed));
+        .expectOneCall("SelfTest")
+        .withOutputParameterReturning("outResult", &passed, sizeof(passed));
+
+    //then we expect the callback to be hit, showing PASS
+    mock().expectOneCall("TestSelfTestResultCallback")
+          .withUnsignedIntParameter("result",
+                                    static_cast<unsigned int>(
+                                        HwLockCtrl::SelfTestResult::FAIL));
+
+    //then we expect the service to return to locked
     mock(HW_LOCK_CTRL_MOCK).expectOneCall("Unlock");
-    // TODO
-    // qf_ctrl::PublishAndProcess(HW_LOCK_CTRL_SERVICE_REQUEST_SELF_TEST_SIG,
-    // mRecorder);
+
+    underTest->DoSelfTestAsync();
+    sst_ctrl::ProcessEvents();
+
     mock().checkExpectations();
-    // TODO auto event =
-    // mRecorder->getRecordedEvent<HwLockCtrl::SelfTestEvent>();
-    // TODO CHECK_TRUE(event != nullptr);
-    // TODO CHECK_EQUAL(HW_LOCK_CTRL_SERVICE_SELF_TEST_RESULTS_SIG, event->sig);
-    // TODO CHECK_TRUE(HwLockCtrl::SelfTestResult::FAIL == event->m_result);
-    // TODO CHECK_TRUE(
-    // mRecorder->isSignalRecorded(HW_LOCK_CTRL_SERVICE_IS_UNLOCKED_SIG));
 }
 
 TEST(HwLockCtrlServiceTests,
