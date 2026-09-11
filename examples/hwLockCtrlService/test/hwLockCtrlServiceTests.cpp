@@ -38,7 +38,7 @@ static void TestSelfTestResultCallback(
     // ReSharper disable once CppParameterMayBeConstPtrOrRef
     HwLockCtrl::SelfTestResult result, HwLockCtrl::Service*, void* ctx)
 {
-    assert(ctx == &dummyContext);
+    CHECK_EQUAL(&dummyContext, ctx);
     mock().actualCall("TestSelfTestResultCallback")
           .withUnsignedIntParameter("result",
                                     static_cast<unsigned int>(result));
@@ -59,8 +59,7 @@ static void TestSelfTestResultCallback(
  *            to test the forward movement of time and expected behavior being
  *            tested.)
  */
-TEST_GROUP(HwLockCtrlServiceTests)
-{
+TEST_GROUP(HwLockCtrlServiceTests) {
     std::unique_ptr<HwLockCtrl::Service> underTest = nullptr;
 
     void setup() final
@@ -267,7 +266,6 @@ TEST(
 {
     startServiceToUnlocked();
 
-
     auto passed = HW_LOCK_CTRL_SELF_TEST_FAILED_POWER;
 
     //the self test call to the driver is first. setup to return passed.
@@ -334,7 +332,7 @@ TEST(HwLockCtrlServiceTests,
 TEST(HwLockCtrlServiceTests,
      given_test_assert_event_will_assert_and_can_be_tested)
 {
-    static constexpr SST::Evt assertCausingEvent  {HwLockCtrl::Service::DEMONSTRATE_TEST_OF_ASSERT};
+    static constexpr SST::Evt assertCausingEvent{HwLockCtrl::Service::DEMONSTRATE_TEST_OF_ASSERT};
 
     startServiceToLocked();
 
