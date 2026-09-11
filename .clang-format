@@ -18,8 +18,7 @@ AllowShortLoopsOnASingleLine: false
 BreakAfterJavaFieldAnnotations: true
 BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeBraces: Stroustrup
-BreakConstructorInitializers: AfterColon
-ColumnLimit: 80
+ColumnLimit: 100
 CompactNamespaces: false
 ContinuationIndentWidth: 2
 Cpp11BracedListStyle: true
@@ -41,5 +40,8 @@ SpacesInParentheses: false
 SpacesInSquareBrackets: false
 Standard: c++14
 UseTab: Never
+BreakConstructorInitializers: BeforeComma
+PackConstructorInitializers: Never
+ConstructorInitializerIndentWidth: 4
 
 ...
