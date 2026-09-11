@@ -90,8 +90,13 @@ FlatStateMachine<SST::Evt>::StateRtn Service::StateOfLocked(const SST::Evt* e)
             HwLockCtrlIsCommOk();
             return Handled();
         }
-        case HW_LOCK_CTRL_SERVICE_REQUEST_SELF_TEST_SIG:
+        case HW_LOCK_CTRL_SERVICE_REQUEST_SELF_TEST_SIG: {
             return TransitionTo(&Service::StateOfSelfTest);
+        }
+        case DEMONSTRATE_TEST_OF_ASSERT: {
+            DBC_ASSERT(999, true == false);
+            return Handled();
+        }
         default: {
             return Handled();
         }

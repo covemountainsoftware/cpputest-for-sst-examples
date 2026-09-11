@@ -21,6 +21,7 @@
 #include "bspTicks.hpp"
 
 // the cpputest headers must always be last
+#include "cms_assert_mock_support.hpp"
 #include "CppUTest/TestHarness.h"
 #include "CppUTestExt/MockSupport.h"
 
@@ -333,15 +334,12 @@ TEST(HwLockCtrlServiceTests,
 TEST(HwLockCtrlServiceTests,
      given_test_assert_event_will_assert_and_can_be_tested)
 {
-    // TODO
-    return;
-    // TODO static const QP::QEvt assertCausingEvent  =
-    // QP::QEvt(DEMONSTRATE_TEST_OF_QASSERT);
+    static constexpr SST::Evt assertCausingEvent  {HwLockCtrl::Service::DEMONSTRATE_TEST_OF_ASSERT};
 
     startServiceToLocked();
 
-    // TODO cms::test::MockExpectQAssert();
-    // TODO mUnderTest->POST(&assertCausingEvent, 0);
+    cms::test::MockExpectDbcAssert();
+    underTest->post(&assertCausingEvent);
     giveProcessingTime();
     mock().checkExpectations();
 }
