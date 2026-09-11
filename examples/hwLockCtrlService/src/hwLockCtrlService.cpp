@@ -19,14 +19,16 @@
 DBC_MODULE_NAME("hwLockCtrlService");
 
 namespace cms::HwLockCtrl {
-
 // 10 second polling rate
 static constexpr uint32_t TICKS_PER_POLL = bsp::TICKS_PER_SECOND * 10;
 
 Service::Service()
     : SstFlatStateMachineTask()
-    , m_poll(POLL_COMM_STATUS, this)
-    , m_lockState(LockState::UNKNOWN)
+      , m_history(Handled())
+      , m_poll(POLL_COMM_STATUS, this)
+      , m_lockState(LockState::UNKNOWN)
+      , m_selfTestResultCb(nullptr)
+      , m_selfTestResultCtx(nullptr)
 {
 }
 
@@ -35,15 +37,27 @@ Service::LockState Service::GetLockState() const
     return m_lockState;
 }
 
+void Service::RegisterSelfTestResultCallback(SelfTestResultCb cb, void* ctx)
+{
+    m_selfTestResultCb  = cb;
+    m_selfTestResultCtx = ctx;
+}
+
 void Service::UnlockAsync()
 {
-    static constexpr SST::Evt ev {HW_LOCK_CTRL_SERVICE_REQUEST_UNLOCKED_SIG};
+    static constexpr SST::Evt ev{HW_LOCK_CTRL_SERVICE_REQUEST_UNLOCKED_SIG};
     post(&ev);
 }
 
 void Service::LockAsync()
 {
-    static constexpr SST::Evt ev {HW_LOCK_CTRL_SERVICE_REQUEST_LOCKED_SIG};
+    static constexpr SST::Evt ev{HW_LOCK_CTRL_SERVICE_REQUEST_LOCKED_SIG};
+    post(&ev);
+}
+
+void Service::DoSelfTestAsync()
+{
+    static constexpr SST::Evt ev{HW_LOCK_CTRL_SERVICE_REQUEST_SELF_TEST_SIG};
     post(&ev);
 }
 
@@ -58,11 +72,11 @@ Service::InitialPseudoState(const SST::Evt*)
 FlatStateMachine<SST::Evt>::StateRtn Service::StateOfLocked(const SST::Evt* e)
 {
     switch (e->sig) {
-        case SM_ENTER: {
+        case SM_ENTER_SIG:
             HwLockCtrlLock();
             notifyChangedState(LockState::LOCKED);
             return Handled();
-        }
+
         case HW_LOCK_CTRL_SERVICE_REQUEST_LOCKED_SIG: {
             return Handled();
         }
@@ -75,6 +89,8 @@ FlatStateMachine<SST::Evt>::StateRtn Service::StateOfLocked(const SST::Evt* e)
             HwLockCtrlIsCommOk();
             return Handled();
         }
+        case HW_LOCK_CTRL_SERVICE_REQUEST_SELF_TEST_SIG:
+            return TransitionTo(&Service::StateOfSelfTest);
         default: {
             return Handled();
         }
@@ -84,7 +100,7 @@ FlatStateMachine<SST::Evt>::StateRtn Service::StateOfLocked(const SST::Evt* e)
 FlatStateMachine<SST::Evt>::StateRtn Service::StateOfUnlocked(const SST::Evt* e)
 {
     switch (e->sig) {
-        case SM_ENTER: {
+        case SM_ENTER_SIG: {
             HwLockCtrlUnlock();
             notifyChangedState(LockState::UNLOCKED);
             return Handled();
@@ -101,6 +117,9 @@ FlatStateMachine<SST::Evt>::StateRtn Service::StateOfUnlocked(const SST::Evt* e)
             HwLockCtrlIsCommOk();
             return Handled();
         }
+        case HW_LOCK_CTRL_SERVICE_REQUEST_SELF_TEST_SIG: {
+            return TransitionTo(&Service::StateOfSelfTest);
+        }
         default: {
             return Handled();
         }
@@ -109,8 +128,18 @@ FlatStateMachine<SST::Evt>::StateRtn Service::StateOfUnlocked(const SST::Evt* e)
 
 FlatStateMachine<SST::Evt>::StateRtn Service::StateOfSelfTest(const SST::Evt* e)
 {
-    (void)e;   // todo
-    return Handled();
+    switch (e->sig) {
+        case SM_ENTER_SIG: {
+            performSelfTest();
+            return Handled();
+        }
+        case REQUEST_GOTO_HISTORY: {
+            return m_history;
+        }
+        default: {
+            return Handled();
+        }
+    }
 }
 
 void Service::performSelfTest()
@@ -126,57 +155,46 @@ void Service::performSelfTest()
 
     // remind self to transition back to
     // history per this service's requirements
-    // note the use of "postLIFO" (urgent) as per:
     //
     //  https://covemountainsoftware.com/2020/03/08/uml-statechart-handling-errors-when-entering-a-state/
     //
-    // TODO static constexpr SST::Evt event {REQUEST_GOTO_HISTORY};
-
-    // TODO post(&event);
+    // ideally we should add a postLIFO to SST. It doesn't currently exist.
+    //
+    static constexpr SST::Evt event{REQUEST_GOTO_HISTORY};
+    post(&event);
 }
 
 void Service::notifyChangedState(const LockState state)
 {
     m_lockState = state;
 
-    // TODO
-    /*
-    static const QP::QEvt lockedEvent =
-      QP::QEvt(HW_LOCK_CTRL_SERVICE_IS_LOCKED_SIG);
-    static const QP::QEvt unlockedEvent =
-      QP::QEvt(HW_LOCK_CTRL_SERVICE_IS_UNLOCKED_SIG);
-
     switch (state) {
         case LockState::LOCKED:
-            QP::QF::PUBLISH(&lockedEvent, this);
-            m_history = &locked;
+            m_history = TransitionTo(&Service::StateOfLocked);
             break;
         case LockState::UNLOCKED:
-            QP::QF::PUBLISH(&unlockedEvent, this);
-            m_history = &unlocked;
+            m_history = TransitionTo(&Service::StateOfUnlocked);
             break;
         default:
-            Q_ASSERT(true == false);
+            DBC_ASSERT(__LINE__, true == false);
             break;
     }
-    */
 }
 
 void Service::notifySelfTestResult(const SelfTestResult result)
 {
-    (void)result;
-    /* TODO
+    //there is no generic publish concept with SST, so instead
+    //we are using a callback approach.
     switch (result) {
-        case SelfTestResult::PASS:   // fall through on purpose
+        case SelfTestResult::PASS: // fall through on purpose
         case SelfTestResult::FAIL:
-            SelfTestEvent::publish<HW_LOCK_CTRL_SERVICE_SELF_TEST_RESULTS_SIG>(
-              result);
+            if (m_selfTestResultCb != nullptr) {
+                m_selfTestResultCb(result, this, m_selfTestResultCtx);
+            }
             break;
         default:
-            Q_ASSERT(true == false);
+            DBC_ERROR(__LINE__);
             break;
     }
-    */
 }
-
-}   // namespace cms::HwLockCtrl
+} // namespace cms::HwLockCtrl

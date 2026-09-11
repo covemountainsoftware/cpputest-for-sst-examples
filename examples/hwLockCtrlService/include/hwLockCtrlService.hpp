@@ -30,12 +30,17 @@ namespace cms::HwLockCtrl {
  */
 class Service : public SstFlatStateMachineTask {
 public:
+
+    using SelfTestResultCb = void (*)(
+        SelfTestResult result, Service* service, void* ctx);
+
     enum class LockState { UNKNOWN, LOCKED, UNLOCKED };
 
     enum DirectSignals {
         PING = SM_BEGIN_USER_SIGNALS,
         HW_LOCK_CTRL_SERVICE_REQUEST_LOCKED_SIG,
         HW_LOCK_CTRL_SERVICE_REQUEST_UNLOCKED_SIG,
+        HW_LOCK_CTRL_SERVICE_REQUEST_SELF_TEST_SIG,
         MAX_DIRECT_SIG
     };
 
@@ -47,7 +52,19 @@ public:
     Service(Service&&)                 = delete;
     Service& operator=(Service&&)      = delete;
 
+    /**
+     * @return the last known lock state of this service
+     */
     [[nodiscard]] LockState GetLockState() const;
+
+    /**
+     * @param cb a callback to execute upon completing any self test request
+     * @param ctx a void* context pointer to provide with the callback.
+     * @note it is generally best from a concurrency point of view to ensure this
+     * has been called before starting this active object. Or at least call it
+     * before requesting a self test.
+     */
+    void RegisterSelfTestResultCallback(SelfTestResultCb cb, void* ctx);
 
     /**
      * Send an event to this active object to
@@ -60,6 +77,12 @@ public:
      * attempt to lock.
      */
     void LockAsync();
+
+    /**
+     * Send an event to this active object to perform its internal
+     * self test actions, then return to its current state.
+     */
+    void DoSelfTestAsync();
 
 protected:
     enum InternalSignals {
@@ -74,13 +97,15 @@ protected:
     StateRtn StateOfSelfTest(const SST::Evt* e);
 
 private:
-    static void notifySelfTestResult(SelfTestResult result);
+    void notifySelfTestResult(SelfTestResult result);
     void notifyChangedState(LockState state);
     void performSelfTest();
 
-    // TODO QP::QStateHandler m_history;
+    StateRtn m_history;
     SST::TimeEvt m_poll;
     std::atomic<LockState> m_lockState;
+    SelfTestResultCb m_selfTestResultCb;
+    void*            m_selfTestResultCtx;
 };
 }   // namespace cms::HwLockCtrl
 
