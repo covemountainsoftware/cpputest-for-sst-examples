@@ -1,5 +1,6 @@
-/// @brief A sample/demonstration QActive based service used
-///        to demonstrate host based unit testing of an active object
+/// @brief A sample/demonstration active object service used
+///        to demonstrate host based unit testing of an
+///        SST Task based active object
 /// @ingroup
 /// @cond
 ///***************************************************************************
@@ -37,7 +38,7 @@ Service::LockState Service::GetLockState() const
     return m_lockState;
 }
 
-void Service::RegisterSelfTestResultCallback(SelfTestResultCb cb, void* ctx)
+void Service::RegisterSelfTestResultCallback(const SelfTestResultCb cb, void* ctx)
 {
     m_selfTestResultCb  = cb;
     m_selfTestResultCtx = ctx;

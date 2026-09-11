@@ -33,7 +33,8 @@ static std::array<SST::Evt const*, 10> testQueueStorage;
 
 static int dummyContext = 1234;
 
-void TestSelfTestResultCallback(
+static void TestSelfTestResultCallback(
+    // ReSharper disable once CppParameterMayBeConstPtrOrRef
     HwLockCtrl::SelfTestResult result, HwLockCtrl::Service*, void* ctx)
 {
     assert(ctx == &dummyContext);
@@ -74,7 +75,7 @@ TEST_GROUP(HwLockCtrlServiceTests)
         sst_ctrl::Teardown();
     }
 
-    void startServiceToLocked()
+    void startServiceToLocked() const
     {
         underTest->RegisterSelfTestResultCallback(
             TestSelfTestResultCallback, &dummyContext);
@@ -99,13 +100,13 @@ TEST_GROUP(HwLockCtrlServiceTests)
         CHECK_TRUE(HwLockCtrl::Service::LockState::LOCKED == underTest->GetLockState());
     }
 
-    void startServiceToUnlocked()
+    void startServiceToUnlocked() const
     {
         startServiceToLocked();
         testUnlock();
     }
 
-    void testUnlock()
+    void testUnlock() const
     {
         mock(HW_LOCK_CTRL_MOCK).expectOneCall("Unlock");
         underTest->UnlockAsync();
